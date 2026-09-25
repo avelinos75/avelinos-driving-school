@@ -1,42 +1,138 @@
 <!doctype html>
 <html lang="el">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Avelinos Driving School</title>
-<style>
-:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#172033;background:#f4f7fb}body{margin:0}header{background:#123a63;color:white;padding:20px}header h1{margin:0;font-size:24px}main{max-width:1000px;margin:auto;padding:18px}.card{background:white;border-radius:16px;padding:18px;margin:0 0 16px;box-shadow:0 3px 15px #0001}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}button,input,select{font:inherit;padding:11px;border:1px solid #ccd4df;border-radius:10px}button{background:#1769aa;color:white;border:0;font-weight:700}button.secondary{background:#e9eef5;color:#17324d}.muted{color:#687386}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:#eef5fb;border-radius:12px;padding:12px}.stat b{display:block;font-size:20px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #e8edf3}th{font-size:13px;color:#586577}.right{text-align:right}.hidden{display:none}@media(max-width:650px){.stats{grid-template-columns:1fr}.desktop{display:none}table{font-size:14px}main{padding:12px}}
-@media print{header,.no-print{display:none!important}body{background:white}.card{box-shadow:none}.invoice{display:block!important}}
-</style>
-</head><body>
-<header><h1>Avelinos Driving School</h1><div>Μαθήματα • Μαθητές • Τιμολόγηση</div></header>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Avelinos Driving School</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root{--blue:#1769aa;--bg:#f3f7fb;--card:#fff;--text:#162033;--muted:#687386;--line:#dce5ee}
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+    header{background:var(--blue);color:white;padding:22px 18px} header h1{margin:0;font-size:26px} header p{margin:5px 0 0;opacity:.9}
+    main{max-width:900px;margin:auto;padding:18px}.card{background:var(--card);border-radius:22px;padding:22px;margin-bottom:18px;box-shadow:0 5px 20px #17324d12}
+    h2{margin-top:0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+    label{display:block;margin:10px 0 5px} input,select{width:100%;padding:13px;border:1px solid #cbd6e1;border-radius:12px;font-size:16px}
+    button{border:0;border-radius:13px;padding:13px 18px;font-weight:700;font-size:16px;cursor:pointer;background:var(--blue);color:#fff;margin:6px 5px 6px 0}
+    button.secondary{background:#e9f0f7;color:#19344f}.status{padding:10px 0;color:var(--muted)}.ok{color:#137333;font-weight:bold}.err{color:#b3261e;font-weight:bold}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:#eef5fb;padding:15px;border-radius:14px}.stat b{display:block;font-size:24px}
+    table{width:100%;border-collapse:collapse;margin-top:15px}th,td{text-align:left;border-bottom:1px solid var(--line);padding:10px 6px;font-size:14px}
+    .small{font-size:13px;color:var(--muted)}
+    @media(max-width:600px){.stats{grid-template-columns:1fr}table{display:block;overflow-x:auto}}
+  </style>
+</head>
+<body>
+<header><h1>Avelinos Driving School</h1><p>Μαθήματα & Google Calendar</p></header>
 <main>
-<section class="card no-print">
-<h2>Google Calendar</h2>
-<p class="muted">Συνδέστε το Google Calendar για αυτόματη εισαγωγή μαθημάτων. Το Client ID θα προστεθεί αφού ολοκληρωθεί η ρύθμιση OAuth.</p>
-<div class="row"><button id="connect">Σύνδεση Google Calendar</button><button class="secondary" id="demo">Δοκιμαστικά δεδομένα</button></div>
-<p id="status" class="muted"></p>
-</section>
-<section class="card no-print">
-<div class="row"><div><label>Μαθητής</label><br><select id="student"><option value="">Όλοι οι μαθητές</option></select></div><div><label>Από</label><br><input id="from" type="date"></div><div><label>Έως</label><br><input id="to" type="date"></div><div style="align-self:end"><button id="filter">Εφαρμογή</button></div></div>
-</section>
-<section class="card">
-<div class="stats"><div class="stat"><span>Μαθήματα</span><b id="lessonCount">0</b></div><div class="stat"><span>Ώρες</span><b id="hours">0.00</b></div><div class="stat"><span>Σύνολο με ΦΠΑ</span><b id="grand">€0.00</b></div></div>
-</section>
-<section class="card"><h2>Μαθήματα</h2><div style="overflow:auto"><table><thead><tr><th>Ημερομηνία</th><th>Μαθητής</th><th>Έναρξη</th><th>Λήξη</th><th>Ώρες</th><th class="right">Σύνολο</th></tr></thead><tbody id="rows"></tbody></table></div></section>
-<section class="card"><h2>Σύνοψη χρέωσης</h2><table><tr><td>Καθαρή αξία</td><td class="right" id="net">€0.00</td></tr><tr><td>ΦΠΑ 19%</td><td class="right" id="vat">€0.00</td></tr><tr><th>Σύνολο</th><th class="right" id="total">€0.00</th></tr></table><div class="row no-print" style="margin-top:14px"><button onclick="window.print()">Εκτύπωση / PDF τιμολογίου</button></div></section>
-<section class="card invoice"><h2>Τιμολόγιο / Κατάσταση μαθημάτων</h2><p>Avelinos Driving School</p><p id="invoiceStudent"></p><p class="muted">Τιμή: €25,00 ανά ώρα, συμπεριλαμβανομένου ΦΠΑ 19%.</p></section>
+  <section class="card">
+    <h2>Google Calendar</h2>
+    <p>Συνδέστε το Google Calendar για αυτόματη εισαγωγή μαθημάτων.</p>
+    <button id="connectBtn">Σύνδεση Google Calendar</button>
+    <button id="loadBtn" class="secondary" disabled>Φόρτωση μαθημάτων</button>
+    <div id="status" class="status">Δεν έχει γίνει σύνδεση.</div>
+  </section>
+
+  <section class="card">
+    <div class="grid">
+      <div><label>Μαθητής</label><select id="student"><option value="">Όλοι οι μαθητές</option></select></div>
+      <div><label>Από</label><input type="date" id="from"></div>
+      <div><label>Έως</label><input type="date" id="to"></div>
+    </div>
+    <button id="applyBtn">Εφαρμογή</button>
+    <button class="secondary" onclick="window.print()">Εκτύπωση / PDF</button>
+  </section>
+
+  <section class="card">
+    <div class="stats">
+      <div class="stat">Μαθήματα<b id="lessonCount">0</b></div>
+      <div class="stat">Ώρες<b id="hoursTotal">0</b></div>
+      <div class="stat">Σύνολο<b id="grandTotal">€0.00</b></div>
+    </div>
+    <p class="small">Χρέωση €25/ώρα. Το ποσό εμφανίζεται με καθαρή αξία και ΦΠΑ 19%.</p>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Ημερομηνία</th><th>Μαθητής</th><th>Ώρα</th><th>Διάρκεια</th><th>Καθαρή αξία</th><th>ΦΠΑ 19%</th><th>Σύνολο</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
 </main>
+
 <script>
-const HOURLY_GROSS=25, VAT=0.19;
-let lessons=[];
-const $=id=>document.getElementById(id);
-function money(n){return new Intl.NumberFormat('el-CY',{style:'currency',currency:'EUR'}).format(n)}
-function hrs(a,b){return (new Date(b)-new Date(a))/3600000}
-function filtered(){let s=$('student').value,f=$('from').value,t=$('to').value;return lessons.filter(x=>(!s||x.student===s)&&(!f||x.start.slice(0,10)>=f)&&(!t||x.start.slice(0,10)<=t))}
-function render(){const data=filtered();$('rows').innerHTML=data.map(x=>`<tr><td>${new Date(x.start).toLocaleDateString('el-CY')}</td><td>${x.student}</td><td>${new Date(x.start).toLocaleTimeString('el-CY',{hour:'2-digit',minute:'2-digit'})}</td><td>${new Date(x.end).toLocaleTimeString('el-CY',{hour:'2-digit',minute:'2-digit'})}</td><td>${hrs(x.start,x.end).toFixed(2)}</td><td class="right">${money(hrs(x.start,x.end)*HOURLY_GROSS)}</td></tr>`).join('');let h=data.reduce((a,x)=>a+hrs(x.start,x.end),0),gross=h*HOURLY_GROSS,net=gross/(1+VAT),vat=gross-net;$('lessonCount').textContent=data.length;$('hours').textContent=h.toFixed(2);$('grand').textContent=money(gross);$('net').textContent=money(net);$('vat').textContent=money(vat);$('total').textContent=money(gross);$('invoiceStudent').textContent=$('student').value?`Μαθητής: ${$('student').value}`:'Όλοι οι μαθητές';}
-function students(){let cur=$('student').value,n=[...new Set(lessons.map(x=>x.student))].sort();$('student').innerHTML='<option value="">Όλοι οι μαθητές</option>'+n.map(x=>`<option>${x}</option>`).join('');$('student').value=cur;}
-$('filter').onclick=render;$('student').onchange=render;
-$('demo').onclick=()=>{lessons=[{student:'Karla',start:'2026-09-25T14:00:00',end:'2026-09-25T15:00:00'},{student:'Masum Sikder',start:'2026-09-25T15:30:00',end:'2026-09-25T16:30:00'},{student:'Karla',start:'2026-09-28T10:00:00',end:'2026-09-28T12:00:00'}];students();render();$('status').textContent='Φορτώθηκαν δοκιμαστικά δεδομένα.'}
-$('connect').onclick=()=>{$('status').textContent='Η εφαρμογή είναι έτοιμη για Google Calendar. Απομένει να προστεθεί το OAuth Client ID μετά τη δημοσίευση στο GitHub Pages.'}
-render();
-</script></body></html>
+const CLIENT_ID = "132638799064-upidv2rlnlfa91kfo35l9f1p759886kt.apps.googleusercontent.com";
+const SCOPES = "https://www.googleapis.com/auth/calendar.events.readonly";
+const RATE = 25;
+let tokenClient, accessToken = "", allLessons = [];
+
+function setStatus(msg, cls=""){ const e=document.getElementById("status"); e.textContent=msg; e.className="status "+cls; }
+
+window.addEventListener("load", () => {
+  const wait = setInterval(() => {
+    if (window.google?.accounts?.oauth2) {
+      clearInterval(wait);
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: async (resp) => {
+          if (resp.error) { setStatus("Η σύνδεση απέτυχε: "+resp.error,"err"); return; }
+          accessToken = resp.access_token;
+          setStatus("Συνδέθηκε με το Google Calendar ✓","ok");
+          document.getElementById("loadBtn").disabled=false;
+          await loadCalendar();
+        }
+      });
+    }
+  },200);
+});
+
+document.getElementById("connectBtn").onclick=()=>{
+  if(!tokenClient){setStatus("Το Google σύστημα σύνδεσης δεν έχει φορτώσει ακόμη.","err");return;}
+  tokenClient.requestAccessToken({prompt: accessToken ? "" : "consent"});
+};
+document.getElementById("loadBtn").onclick=loadCalendar;
+document.getElementById("applyBtn").onclick=render;
+
+async function loadCalendar(){
+  if(!accessToken) return;
+  setStatus("Φόρτωση μαθημάτων...");
+  const timeMin = new Date(new Date().getFullYear()-1,0,1).toISOString();
+  const timeMax = new Date(new Date().getFullYear()+1,11,31,23,59,59).toISOString();
+  const url = "https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=2500&timeMin="+encodeURIComponent(timeMin)+"&timeMax="+encodeURIComponent(timeMax);
+  try{
+    const r=await fetch(url,{headers:{Authorization:"Bearer "+accessToken}});
+    const data=await r.json();
+    if(!r.ok) throw new Error(data?.error?.message || "Calendar API error");
+    allLessons=(data.items||[]).filter(e=>e.start?.dateTime && e.end?.dateTime).map(e=>{
+      const start=new Date(e.start.dateTime), end=new Date(e.end.dateTime);
+      return {id:e.id,student:(e.summary||"Χωρίς όνομα").trim(),start,end,hours:(end-start)/3600000};
+    });
+    fillStudents(); render();
+    setStatus(`Φορτώθηκαν ${allLessons.length} μαθήματα ✓`,"ok");
+  }catch(e){setStatus("Σφάλμα: "+e.message,"err");}
+}
+
+function fillStudents(){
+  const sel=document.getElementById("student"), current=sel.value;
+  const names=[...new Set(allLessons.map(x=>x.student))].sort((a,b)=>a.localeCompare(b,"el"));
+  sel.innerHTML='<option value="">Όλοι οι μαθητές</option>'+names.map(n=>`<option>${escapeHtml(n)}</option>`).join("");
+  sel.value=current;
+}
+function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
+function money(n){return "€"+n.toFixed(2)}
+function render(){
+  const student=document.getElementById("student").value, f=document.getElementById("from").value, t=document.getElementById("to").value;
+  const list=allLessons.filter(x=>{
+    const d=x.start.toISOString().slice(0,10);
+    return (!student||x.student===student)&&(!f||d>=f)&&(!t||d<=t);
+  });
+  let hours=0,total=0;
+  document.getElementById("rows").innerHTML=list.map(x=>{
+    hours+=x.hours; const gross=x.hours*RATE, net=gross/1.19, vat=gross-net; total+=gross;
+    return `<tr><td>${x.start.toLocaleDateString("el-CY")}</td><td>${escapeHtml(x.student)}</td><td>${x.start.toLocaleTimeString("el-CY",{hour:"2-digit",minute:"2-digit"})}–${x.end.toLocaleTimeString("el-CY",{hour:"2-digit",minute:"2-digit"})}</td><td>${x.hours.toFixed(2)} h</td><td>${money(net)}</td><td>${money(vat)}</td><td><b>${money(gross)}</b></td></tr>`;
+  }).join("");
+  document.getElementById("lessonCount").textContent=list.length;
+  document.getElementById("hoursTotal").textContent=hours.toFixed(2);
+  document.getElementById("grandTotal").textContent=money(total);
+}
+</script>
+</body>
+</html>
