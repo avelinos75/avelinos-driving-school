@@ -59,7 +59,7 @@
 
 <script>
 const CLIENT_ID = "132638799064-upidv2rlnlfa91kfo35l9f1p759886kt.apps.googleusercontent.com";
-const SCOPES = "https://www.googleapis.com/auth/calendar.events.readonly";
+const SCOPES = "https://www.googleapis.com/auth/calendar.readonly";
 const RATE = 25;
 let tokenClient, accessToken = "", allLessons = [];
 
@@ -91,23 +91,64 @@ document.getElementById("connectBtn").onclick=()=>{
 document.getElementById("loadBtn").onclick=loadCalendar;
 document.getElementById("applyBtn").onclick=render;
 
+async function googleGet(url){
+  const r = await fetch(url,{headers:{Authorization:"Bearer "+accessToken}});
+  const data = await r.json();
+  if(!r.ok) throw new Error(data?.error?.message || "Calendar API error");
+  return data;
+}
+
 async function loadCalendar(){
   if(!accessToken) return;
-  setStatus("Φόρτωση μαθημάτων...");
+  setStatus("Φόρτωση μαθημάτων από όλα τα ημερολόγια...");
   const timeMin = new Date(new Date().getFullYear()-1,0,1).toISOString();
   const timeMax = new Date(new Date().getFullYear()+1,11,31,23,59,59).toISOString();
-  const url = "https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=2500&timeMin="+encodeURIComponent(timeMin)+"&timeMax="+encodeURIComponent(timeMax);
+
   try{
-    const r=await fetch(url,{headers:{Authorization:"Bearer "+accessToken}});
-    const data=await r.json();
-    if(!r.ok) throw new Error(data?.error?.message || "Calendar API error");
-    allLessons=(data.items||[]).filter(e=>e.start?.dateTime && e.end?.dateTime).map(e=>{
-      const start=new Date(e.start.dateTime), end=new Date(e.end.dateTime);
-      return {id:e.id,student:(e.summary||"Χωρίς όνομα").trim(),start,end,hours:(end-start)/3600000};
-    });
-    fillStudents(); render();
-    setStatus(`Φορτώθηκαν ${allLessons.length} μαθήματα ✓`,"ok");
-  }catch(e){setStatus("Σφάλμα: "+e.message,"err");}
+    // Read every calendar visible to this Google account, including "My calendars".
+    let calendars = [], pageToken = "";
+    do{
+      const listUrl = "https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=250" +
+        (pageToken ? "&pageToken="+encodeURIComponent(pageToken) : "");
+      const listData = await googleGet(listUrl);
+      calendars.push(...(listData.items || []));
+      pageToken = listData.nextPageToken || "";
+    }while(pageToken);
+
+    const lessons = [];
+    for(const cal of calendars){
+      let eventPageToken = "";
+      do{
+        const url =
+          "https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(cal.id)+
+          "/events?singleEvents=true&orderBy=startTime&maxResults=2500"+
+          "&timeMin="+encodeURIComponent(timeMin)+
+          "&timeMax="+encodeURIComponent(timeMax)+
+          (eventPageToken ? "&pageToken="+encodeURIComponent(eventPageToken) : "");
+
+        const data = await googleGet(url);
+        for(const e of (data.items || [])){
+          if(!e.start?.dateTime || !e.end?.dateTime) continue;
+          const start = new Date(e.start.dateTime), end = new Date(e.end.dateTime);
+          lessons.push({
+            id: cal.id+"|"+e.id,
+            calendar: cal.summary || "",
+            student: (e.summary || "Χωρίς όνομα").trim(),
+            start, end,
+            hours: (end-start)/3600000
+          });
+        }
+        eventPageToken = data.nextPageToken || "";
+      }while(eventPageToken);
+    }
+
+    allLessons = lessons.sort((a,b)=>a.start-b.start);
+    fillStudents();
+    render();
+    setStatus(`Φορτώθηκαν ${allLessons.length} μαθήματα από ${calendars.length} ημερολόγια ✓`,"ok");
+  }catch(e){
+    setStatus("Σφάλμα: "+e.message,"err");
+  }
 }
 
 function fillStudents(){
