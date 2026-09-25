@@ -116,8 +116,10 @@ async function loadCalendar(){
     }while(pageToken);
 
     const lessons = [];
+    const diagnostics = [];
     for(const cal of calendars){
       let eventPageToken = "";
+      let calendarEventCount = 0;
       do{
         const url =
           "https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(cal.id)+
@@ -129,6 +131,7 @@ async function loadCalendar(){
         const data = await googleGet(url);
         for(const e of (data.items || [])){
           if(!e.start?.dateTime || !e.end?.dateTime) continue;
+          calendarEventCount++;
           const start = new Date(e.start.dateTime), end = new Date(e.end.dateTime);
           lessons.push({
             id: cal.id+"|"+e.id,
@@ -140,12 +143,13 @@ async function loadCalendar(){
         }
         eventPageToken = data.nextPageToken || "";
       }while(eventPageToken);
+      diagnostics.push(`${cal.summary || "(χωρίς όνομα)"}: ${calendarEventCount}`);
     }
 
     allLessons = lessons.sort((a,b)=>a.start-b.start);
     fillStudents();
     render();
-    setStatus(`Φορτώθηκαν ${allLessons.length} μαθήματα από ${calendars.length} ημερολόγια ✓`,"ok");
+    setStatus(`Φορτώθηκαν ${allLessons.length} μαθήματα από ${calendars.length} ημερολόγια ✓ | ${diagnostics.join(" • ")}`,"ok");
   }catch(e){
     setStatus("Σφάλμα: "+e.message,"err");
   }
