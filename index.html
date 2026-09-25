@@ -9,14 +9,14 @@
     :root{--blue:#1769aa;--bg:#f3f7fb;--card:#fff;--text:#162033;--muted:#687386;--line:#dce5ee}
     *{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
     header{background:var(--blue);color:white;padding:22px 18px} header h1{margin:0;font-size:26px} header p{margin:5px 0 0;opacity:.9}
-    main{max-width:900px;margin:auto;padding:18px}.card{background:var(--card);border-radius:22px;padding:22px;margin-bottom:18px;box-shadow:0 5px 20px #17324d12}
+    main{max-width:1000px;margin:auto;padding:18px}.card{background:var(--card);border-radius:22px;padding:22px;margin-bottom:18px;box-shadow:0 5px 20px #17324d12}
     h2{margin-top:0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
     label{display:block;margin:10px 0 5px} input,select{width:100%;padding:13px;border:1px solid #cbd6e1;border-radius:12px;font-size:16px}
     button{border:0;border-radius:13px;padding:13px 18px;font-weight:700;font-size:16px;cursor:pointer;background:var(--blue);color:#fff;margin:6px 5px 6px 0}
     button.secondary{background:#e9f0f7;color:#19344f}.status{padding:10px 0;color:var(--muted)}.ok{color:#137333;font-weight:bold}.err{color:#b3261e;font-weight:bold}
     .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:#eef5fb;padding:15px;border-radius:14px}.stat b{display:block;font-size:24px}
-    table{width:100%;border-collapse:collapse;margin-top:15px}th,td{text-align:left;border-bottom:1px solid var(--line);padding:10px 6px;font-size:14px}
-    .small{font-size:13px;color:var(--muted)}
+    table{width:100%;border-collapse:collapse;margin-top:15px;min-width:850px}th,td{text-align:left;border-bottom:1px solid var(--line);padding:10px 6px;font-size:14px}
+    .small{font-size:13px;color:var(--muted)} .yes{font-weight:700}
     @media(max-width:600px){.stats{grid-template-columns:1fr}table{display:block;overflow-x:auto}}
   </style>
 </head>
@@ -30,7 +30,6 @@
     <button id="loadBtn" class="secondary" disabled>Φόρτωση μαθημάτων</button>
     <div id="status" class="status">Δεν έχει γίνει σύνδεση.</div>
   </section>
-
   <section class="card">
     <div class="grid">
       <div><label>Μαθητής</label><select id="student"><option value="">Όλοι οι μαθητές</option></select></div>
@@ -40,153 +39,65 @@
     <button id="applyBtn">Εφαρμογή</button>
     <button class="secondary" onclick="window.print()">Εκτύπωση / PDF</button>
   </section>
-
   <section class="card">
     <div class="stats">
-      <div class="stat">Μαθήματα<b id="lessonCount">0</b></div><div class="stat">Εξετάσεις<b id="testCount">0</b></div>
+      <div class="stat">Μαθήματα<b id="lessonCount">0</b></div>
+      <div class="stat">Εξετάσεις<b id="testCount">0</b></div>
       <div class="stat">Ώρες<b id="hoursTotal">0</b></div>
-      <div class="stat">Σύνολο<b id="grandTotal">€0.00</b></div><div class="stat">ΦΠΑ 19%<b id="vatTotal">€0.00</b></div>
+      <div class="stat">Σύνολο<b id="grandTotal">€0.00</b></div>
+      <div class="stat">ΦΠΑ 19%<b id="vatTotal">€0.00</b></div>
     </div>
     <p class="small">Μάθημα €25/ώρα • Εξέταση €150 όταν στο Location γράφει “Test”. Ο ΦΠΑ 19% περιλαμβάνεται στο σύνολο.</p>
     <div style="overflow-x:auto">
       <table>
-        <thead><tr><th>Ημερομηνία</th><th>Μαθητής</th><th>Τύπος</th><th>Ώρα</th><th>Διάρκεια</th><th>Σύνολο</th><th>ΦΠΑ 19%</th></tr></thead>
+        <thead><tr><th>Ημερομηνία</th><th>Μαθητής</th><th>Μάθημα</th><th>Εξέταση</th><th>Ώρα</th><th>Διάρκεια</th><th>Ποσό</th><th>ΦΠΑ 19%</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
   </section>
 </main>
-
 <script>
-const CLIENT_ID = "132638799064-upidv2rlnlfa91kfo35l9f1p759886kt.apps.googleusercontent.com";
-const SCOPES = "https://www.googleapis.com/auth/calendar.readonly";
-const RATE = 25;
-const TEST_RATE = 150;
-let tokenClient, accessToken = "", allLessons = [];
-
-function setStatus(msg, cls=""){ const e=document.getElementById("status"); e.textContent=msg; e.className="status "+cls; }
-
-window.addEventListener("load", () => {
-  const wait = setInterval(() => {
-    if (window.google?.accounts?.oauth2) {
-      clearInterval(wait);
-      tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPES,
-        callback: async (resp) => {
-          if (resp.error) { setStatus("Η σύνδεση απέτυχε: "+resp.error,"err"); return; }
-          accessToken = resp.access_token;
-          setStatus("Συνδέθηκε με το Google Calendar ✓","ok");
-          document.getElementById("loadBtn").disabled=false;
-          await loadCalendar();
-        }
-      });
-    }
-  },200);
-});
-
-document.getElementById("connectBtn").onclick=()=>{
-  if(!tokenClient){setStatus("Το Google σύστημα σύνδεσης δεν έχει φορτώσει ακόμη.","err");return;}
-  tokenClient.requestAccessToken({prompt: accessToken ? "" : "consent"});
-};
+const CLIENT_ID="132638799064-upidv2rlnlfa91kfo35l9f1p759886kt.apps.googleusercontent.com";
+const SCOPES="https://www.googleapis.com/auth/calendar.readonly";
+const RATE=25, TEST_RATE=150;
+let tokenClient,accessToken="",allLessons=[];
+function setStatus(msg,cls=""){const e=document.getElementById("status");e.textContent=msg;e.className="status "+cls}
+window.addEventListener("load",()=>{const wait=setInterval(()=>{if(window.google?.accounts?.oauth2){clearInterval(wait);tokenClient=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:async(resp)=>{if(resp.error){setStatus("Η σύνδεση απέτυχε: "+resp.error,"err");return}accessToken=resp.access_token;setStatus("Συνδέθηκε με το Google Calendar ✓","ok");document.getElementById("loadBtn").disabled=false;await loadCalendar()}})}},200)});
+document.getElementById("connectBtn").onclick=()=>{if(!tokenClient){setStatus("Το Google σύστημα σύνδεσης δεν έχει φορτώσει ακόμη.","err");return}tokenClient.requestAccessToken({prompt:accessToken?"":"consent"})};
 document.getElementById("loadBtn").onclick=loadCalendar;
 document.getElementById("applyBtn").onclick=render;
-
-async function googleGet(url){
-  const r = await fetch(url,{headers:{Authorization:"Bearer "+accessToken}});
-  const data = await r.json();
-  if(!r.ok) throw new Error(data?.error?.message || "Calendar API error");
-  return data;
-}
-
+async function googleGet(url){const r=await fetch(url,{headers:{Authorization:"Bearer "+accessToken}}),data=await r.json();if(!r.ok)throw new Error(data?.error?.message||"Calendar API error");return data}
 async function loadCalendar(){
-  if(!accessToken) return;
-  setStatus("Φόρτωση μαθημάτων από όλα τα ημερολόγια...");
-  const timeMin = new Date(new Date().getFullYear()-1,0,1).toISOString();
-  const timeMax = new Date(new Date().getFullYear()+1,11,31,23,59,59).toISOString();
-
-  try{
-    // Read every calendar visible to this Google account, including "My calendars".
-    let calendars = [], pageToken = "";
-    do{
-      const listUrl = "https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=250" +
-        (pageToken ? "&pageToken="+encodeURIComponent(pageToken) : "");
-      const listData = await googleGet(listUrl);
-      calendars.push(...(listData.items || []));
-      pageToken = listData.nextPageToken || "";
-    }while(pageToken);
-
-    const lessons = [];
-    const diagnostics = [];
-    for(const cal of calendars){
-      let eventPageToken = "";
-      let calendarEventCount = 0;
-      do{
-        const url =
-          "https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(cal.id)+
-          "/events?singleEvents=true&orderBy=startTime&maxResults=2500"+
-          "&timeMin="+encodeURIComponent(timeMin)+
-          "&timeMax="+encodeURIComponent(timeMax)+
-          (eventPageToken ? "&pageToken="+encodeURIComponent(eventPageToken) : "");
-
-        const data = await googleGet(url);
-        for(const e of (data.items || [])){
-          if(!e.start?.dateTime || !e.end?.dateTime) continue;
-          calendarEventCount++;
-          const start = new Date(e.start.dateTime), end = new Date(e.end.dateTime);
-          lessons.push({
-            id: cal.id+"|"+e.id,
-            calendar: cal.summary || "",
-            student: (e.summary || "Χωρίς όνομα").trim(),
-            location: (e.location || "").trim(),
-            isTest: (e.location || "").trim().toLowerCase() === "test",
-            start, end,
-            hours: (end-start)/3600000
-          });
-        }
-        eventPageToken = data.nextPageToken || "";
-      }while(eventPageToken);
-      diagnostics.push(`${cal.summary || "(χωρίς όνομα)"}: ${calendarEventCount}`);
-    }
-
-    allLessons = lessons.sort((a,b)=>a.start-b.start);
-    fillStudents();
-    render();
-    setStatus(`Φορτώθηκαν ${allLessons.length} μαθήματα από ${calendars.length} ημερολόγια ✓ | ${diagnostics.join(" • ")}`,"ok");
-  }catch(e){
-    setStatus("Σφάλμα: "+e.message,"err");
-  }
+ if(!accessToken)return;setStatus("Φόρτωση μαθημάτων από όλα τα ημερολόγια...");
+ const timeMin=new Date(new Date().getFullYear()-1,0,1).toISOString(),timeMax=new Date(new Date().getFullYear()+1,11,31,23,59,59).toISOString();
+ try{
+  let calendars=[],pageToken="";
+  do{const d=await googleGet("https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=250"+(pageToken?"&pageToken="+encodeURIComponent(pageToken):""));calendars.push(...(d.items||[]));pageToken=d.nextPageToken||""}while(pageToken);
+  const lessons=[],diagnostics=[];
+  for(const cal of calendars){let pt="",cnt=0;do{
+   const data=await googleGet("https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(cal.id)+"/events?singleEvents=true&orderBy=startTime&maxResults=2500&timeMin="+encodeURIComponent(timeMin)+"&timeMax="+encodeURIComponent(timeMax)+(pt?"&pageToken="+encodeURIComponent(pt):""));
+   for(const e of(data.items||[])){if(!e.start?.dateTime||!e.end?.dateTime)continue;cnt++;const start=new Date(e.start.dateTime),end=new Date(e.end.dateTime),location=(e.location||"").trim();lessons.push({id:cal.id+"|"+e.id,calendar:cal.summary||"",student:(e.summary||"Χωρίς όνομα").trim(),location,isTest:location.toLowerCase()==="test",start,end,hours:(end-start)/3600000})}pt=data.nextPageToken||""
+  }while(pt);diagnostics.push(`${cal.summary||"(χωρίς όνομα)"}: ${cnt}`)}
+  allLessons=lessons.sort((a,b)=>a.start-b.start);fillStudents();render();setStatus(`Φορτώθηκαν ${allLessons.length} μαθήματα από ${calendars.length} ημερολόγια ✓ | ${diagnostics.join(" • ")}`,"ok")
+ }catch(e){setStatus("Σφάλμα: "+e.message,"err")}
 }
-
-function fillStudents(){
-  const sel=document.getElementById("student"), current=sel.value;
-  const names=[...new Set(allLessons.map(x=>x.student))].sort((a,b)=>a.localeCompare(b,"el"));
-  sel.innerHTML='<option value="">Όλοι οι μαθητές</option>'+names.map(n=>`<option>${escapeHtml(n)}</option>`).join("");
-  sel.value=current;
-}
-function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
+function fillStudents(){const sel=document.getElementById("student"),current=sel.value,names=[...new Set(allLessons.map(x=>x.student))].sort((a,b)=>a.localeCompare(b,"el"));sel.innerHTML='<option value="">Όλοι οι μαθητές</option>'+names.map(n=>`<option>${escapeHtml(n)}</option>`).join("");sel.value=current}
+function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 function money(n){return "€"+n.toFixed(2)}
 function render(){
-  const student=document.getElementById("student").value, f=document.getElementById("from").value, t=document.getElementById("to").value;
-  const list=allLessons.filter(x=>{
-    const d=x.start.toISOString().slice(0,10);
-    return (!student||x.student===student)&&(!f||d>=f)&&(!t||d<=t);
-  });
-  let hours=0,total=0,totalVat=0;
-  document.getElementById("rows").innerHTML=list.map(x=>{
-    hours+=x.hours;
-    const gross=x.isTest ? TEST_RATE : x.hours*RATE;
-    const vat=gross-(gross/1.19);
-    total+=gross; totalVat+=vat;
-    return `<tr><td>${x.start.toLocaleDateString("el-CY")}</td><td>${escapeHtml(x.student)}</td><td><b>${x.isTest ? "Εξέταση" : "Μάθημα"}</b></td><td>${x.start.toLocaleTimeString("el-CY",{hour:"2-digit",minute:"2-digit"})}–${x.end.toLocaleTimeString("el-CY",{hour:"2-digit",minute:"2-digit"})}</td><td>${x.hours.toFixed(2)} h</td><td><b>${money(gross)}</b></td><td>${money(vat)}</td></tr>`;
-  }).join("");
-  document.getElementById("lessonCount").textContent=list.filter(x=>!x.isTest).length;
-  document.getElementById("testCount").textContent=list.filter(x=>x.isTest).length;
-  document.getElementById("hoursTotal").textContent=hours.toFixed(2);
-  document.getElementById("grandTotal").textContent=money(total);
-  document.getElementById("vatTotal").textContent=money(totalVat);
+ const student=document.getElementById("student").value,f=document.getElementById("from").value,t=document.getElementById("to").value;
+ const list=allLessons.filter(x=>{const d=x.start.toISOString().slice(0,10);return(!student||x.student===student)&&(!f||d>=f)&&(!t||d<=t)});
+ let hours=0,total=0,totalVat=0;
+ document.getElementById("rows").innerHTML=list.map(x=>{
+  hours+=x.hours;const gross=x.isTest?TEST_RATE:x.hours*RATE,vat=gross-(gross/1.19);total+=gross;totalVat+=vat;
+  return `<tr><td>${x.start.toLocaleDateString("el-CY")}</td><td>${escapeHtml(x.student)}</td><td class="yes">${x.isTest?"—":"✓"}</td><td class="yes">${x.isTest?"✓ (€150)":"—"}</td><td>${x.start.toLocaleTimeString("el-CY",{hour:"2-digit",minute:"2-digit"})}–${x.end.toLocaleTimeString("el-CY",{hour:"2-digit",minute:"2-digit"})}</td><td>${x.hours.toFixed(2)} h</td><td><b>${money(gross)}</b></td><td>${money(vat)}</td></tr>`
+ }).join("");
+ document.getElementById("lessonCount").textContent=list.filter(x=>!x.isTest).length;
+ document.getElementById("testCount").textContent=list.filter(x=>x.isTest).length;
+ document.getElementById("hoursTotal").textContent=hours.toFixed(2);
+ document.getElementById("grandTotal").textContent=money(total);
+ document.getElementById("vatTotal").textContent=money(totalVat)
 }
-
 </script>
 </body>
 </html>
