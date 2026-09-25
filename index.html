@@ -43,7 +43,7 @@
 
   <section class="card">
     <div class="stats">
-      <div class="stat">Μαθήματα<b id="lessonCount">0</b></div>
+      <div class="stat">Μαθήματα<b id="lessonCount">0</b></div><div class="stat">Εξετάσεις<b id="testCount">0</b></div>
       <div class="stat">Ώρες<b id="hoursTotal">0</b></div>
       <div class="stat">Σύνολο<b id="grandTotal">€0.00</b></div><div class="stat">ΦΠΑ 19%<b id="vatTotal">€0.00</b></div>
     </div>
@@ -180,7 +180,8 @@ function render(){
     total+=gross; totalVat+=vat;
     return `<tr><td>${x.start.toLocaleDateString("el-CY")}</td><td>${escapeHtml(x.student)}</td><td><b>${x.isTest ? "Εξέταση" : "Μάθημα"}</b></td><td>${x.start.toLocaleTimeString("el-CY",{hour:"2-digit",minute:"2-digit"})}–${x.end.toLocaleTimeString("el-CY",{hour:"2-digit",minute:"2-digit"})}</td><td>${x.hours.toFixed(2)} h</td><td><b>${money(gross)}</b></td><td>${money(vat)}</td></tr>`;
   }).join("");
-  document.getElementById("lessonCount").textContent=list.length;
+  document.getElementById("lessonCount").textContent=list.filter(x=>!x.isTest).length;
+  document.getElementById("testCount").textContent=list.filter(x=>x.isTest).length;
   document.getElementById("hoursTotal").textContent=hours.toFixed(2);
   document.getElementById("grandTotal").textContent=money(total);
   document.getElementById("vatTotal").textContent=money(totalVat);
