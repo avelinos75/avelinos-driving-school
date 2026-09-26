@@ -89,7 +89,7 @@ function render(){
  const list=allLessons.filter(x=>{const d=x.start.toISOString().slice(0,10);return(!student||x.student===student)&&(!f||d>=f)&&(!t||d<=t)});
  let hours=0,total=0,totalVat=0;
  document.getElementById("rows").innerHTML=list.map(x=>{
-  hours+=x.hours;const lessonRate=x.isSpecial?30:RATE;const gross=x.isTest?TEST_RATE:x.hours*lessonRate,vat=gross-(gross/1.19);total+=gross;totalVat+=vat;
+  if(!x.isTest) hours+=x.hours;const lessonRate=x.isSpecial?30:RATE;const gross=x.isTest?TEST_RATE:x.hours*lessonRate,vat=gross-(gross/1.19);total+=gross;totalVat+=vat;
   return `<tr><td>${x.start.toLocaleDateString("el-CY")}</td><td>${escapeHtml(x.student)}</td><td class="yes">${x.isTest?"—":(x.isSpecial?"✓ (€30/ώρα)":"✓ (€25/ώρα)")}</td><td class="yes">${x.isTest?"✓ (€150)":"—"}</td><td>${x.start.toLocaleTimeString("el-CY",{hour:"2-digit",minute:"2-digit"})}–${x.end.toLocaleTimeString("el-CY",{hour:"2-digit",minute:"2-digit"})}</td><td>${x.hours.toFixed(2)} h</td><td><b>${money(gross)}</b></td><td>${money(vat)}</td></tr>`
  }).join("");
  document.getElementById("lessonCount").textContent=list.filter(x=>!x.isTest).length;
